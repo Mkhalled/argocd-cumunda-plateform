@@ -1,0 +1,41 @@
+# Fichiers Helm Charts générés automatiquement
+# ⚠️ IMPORTANT: Ne pas committer ces fichiers !
+# Ils sont téléchargés automatiquement par Helm
+Chart.lock
+charts/
+*.tgz
+
+# Secrets (ne jamais committer !)
+*secret*.yaml
+*password*.yaml
+*credentials*.yaml
+*.key
+*.pem
+*.crt
+secrets/
+
+# Fichiers de configuration locale avec vraies valeurs
+.env
+.env.local
+*.local
+values-*-local.yaml
+kubeconfig*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Logs
+*.log

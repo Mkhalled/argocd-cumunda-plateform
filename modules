@@ -1,0 +1,97 @@
+# Module de configuration Camunda 8
+# Ce fichier facilite la gestion des environnements
+
+environments:
+  # Non-Production
+  nprd:
+    # DEV
+    dev:
+      enabled: true
+      account_id: "2837105"
+      ecosystem: "ec002i002837"
+      cluster: "https://ku002i000983-fastl4.svc-np.paas.echonet:32530"
+      namespace: "ns002i008817" # 🔴 À MODIFIER - Namespace dédié Camunda
+      vault_namespace: "UPM_FLUX/TRANCARPAY/EC002I002837"
+      argocd_app: "argocd/camunda8-dev-app.yaml"
+      values_file: "camunda-platform/values-dev.yaml"
+
+    # INT (Intégration)
+    int:
+      enabled: true
+      account_id: "2837105"
+      ecosystem: "ec002i002837"
+      cluster: "https://ku002i000983-fastl4.svc-np.paas.echonet:32530"
+      namespace: "ns002i008962" # 🔴 À MODIFIER
+      vault_namespace: "UPM_FLUX/TRANCARPAY/EC002I002837"
+      argocd_app: "argocd/camunda8-int-app.yaml"
+      values_file: "camunda-platform/values-int.yaml"
+
+    # QUAL 1
+    qua:
+      enabled: true
+      account_id: "2837105"
+      ecosystem: "ec002i002837"
+      cluster: "https://ku002i000983-fastl4.svc-np.paas.echonet:32530"
+      namespace: "ns002i008887" # 🔴 À MODIFIER
+      vault_namespace: "UPM_FLUX/TRANCARPAY/EC002I002837"
+      argocd_app: "argocd/camunda8-qua-app.yaml"
+      values_file: "camunda-platform/values-qua.yaml"
+
+    # QUAL 2
+    qua2:
+      enabled: false # Activez si nécessaire
+      account_id: "2837105"
+      ecosystem: "ec002i002837"
+      cluster: "https://ku002i000983-fastl4.svc-np.paas.echonet:32530"
+      namespace: "ns002i012036" # 🔴 À MODIFIER
+      vault_namespace: "UPM_FLUX/TRANCARPAY/EC002I002837"
+      argocd_app: "argocd/camunda8-qua2-app.yaml"
+      values_file: "camunda-platform/values-qua2.yaml"
+
+    # QUAL 3
+    qua3:
+      enabled: false # Activez si nécessaire
+      account_id: "2837105"
+      ecosystem: "ec002i002837"
+      cluster: "https://ku002i000983-fastl4.svc-np.paas.echonet:32530"
+      namespace: "ns002i012037" # 🔴 À MODIFIER
+      vault_namespace: "UPM_FLUX/TRANCARPAY/EC002I002837"
+      argocd_app: "argocd/camunda8-qua3-app.yaml"
+      values_file: "camunda-platform/values-qua3.yaml"
+
+  # Production (à définir)
+  prd:
+    prd:
+      enabled: false # À activer quand prêt
+      account_id: "XXXXX" # 🔴 À DÉFINIR
+      ecosystem: "ecXXXiXXXXXXX" # 🔴 À DÉFINIR
+      cluster: "https://kuXXXiXXXXXX-fastl4.svc.paas.echonet:XXXXX" # 🔴 À DÉFINIR
+      namespace: "nsXXXiXXXXXX" # 🔴 À DÉFINIR
+      vault_namespace: "UPM_FLUX/TRANCARPAY/ECXXXIXXXXXX" # 🔴 À DÉFINIR
+      argocd_app: "argocd/camunda8-prd-app.yaml"
+      values_file: "camunda-platform/values-prd.yaml"
+
+# Informations globales
+global:
+  project_name: "camunda8-platform"
+  git_repo: "https://gitlab.dogen.group.echonet/votre-equipe/camunda8-deployement.git" # 🔴 À MODIFIER
+  git_branch: "main"
+
+  # Artifactory
+  artifactory:
+    url: "https://repo.artifactory-dogen.group.echonet"
+    helm_repo: "p-3844-helm" # 🔴 À VÉRIFIER
+    chart_name: "camunda-platform"
+    chart_version: "10.3.3"
+
+  # Standards d'entreprise
+  standards:
+    appcode: "🔴APxxxxx" # 🔴 À MODIFIER
+    tier: "A"
+    component: "java"
+    opscontact: "🔴votre_equipe_ops@votre-entreprise.com" # 🔴 À MODIFIER
+
+# Notes
+# - Les namespaces doivent être créés par l'équipe infra
+# - Les secrets TLS doivent être créés pour chaque environnement
+# - Vérifier que le chart Camunda est disponible dans Artifactory

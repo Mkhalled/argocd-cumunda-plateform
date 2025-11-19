@@ -1,0 +1,17 @@
+apiVersion: v2
+name: camunda8-dev
+description: Camunda 8 deployment for dev environment
+type: application
+version: 1.0.0
+appVersion: "8.6.0"
+
+dependencies:
+  - name: camunda-platform
+    version: "10.3.3"
+    # 🏢 OPTION 1: Artifactory (RECOMMANDÉ pour votre entreprise)
+    repository: https://repo.artifactory-dogen.group.echonet/artifactory/p-3844-helm
+    # ⚠️ Vérifiez auprès de votre équipe si le chart Camunda est disponible dans p-3844-helm
+    # Sinon demandez le repository Helm approprié pour les charts externes
+    
+    # 🌐 OPTION 2: Internet direct (si autorisé par votre entreprise)
+    # repository: https://helm.camunda.io

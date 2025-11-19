@@ -1,0 +1,469 @@
+# Configuration Camunda 8 pour environnement DEV
+# Adapté aux standards d'entreprise
+
+#######################################################
+# Labels standards (similaire à votre backend)
+#######################################################
+labels:
+  appcode: 🔴 APxxxxx # 🔴 À MODIFIER selon votre projet Camunda
+  appshortname: 🔴 CAMUNDA8-PLATFORM # 🔴 À MODIFIER
+  env: dev
+  # A, P or PA with P for Presentation and A for API
+  tier: A
+  opscontact: 🔴 votre_equipe_ops@votre-entreprise.com # 🔴 À MODIFIER
+  # component: java, dotnet, php or python
+  component: java
+  function: workflow-engine
+  # Version stable or canary
+  version: stable
+  ecosystem: 🔴 ecXXXiXXXXXX # 🔴 Depuis .env_vars > nprd.default.ecosystem
+  rollout: "true"
+  inservice: "false"
+
+  # Kubernetes cluster info
+  k8s_cluster: 🔴 kuXXXiXXXXXX # 🔴 Depuis .env_vars > nprd.default.cluster
+  k8s_namespace: 🔴 nsXXXiXXXXXX # 🔴 Depuis .env_vars > nprd.envs.dev.namespace
+
+  laas_dmzr_apcode: 🔴 apxxxxx # 🔴 À MODIFIER
+  laas_dmzr_dataset: camundalogs # 🔴 À MODIFIER
+  laas_dmzr_env: dev
+
+#######################################################
+# Configuration globale Camunda 8
+#######################################################
+global:
+  image:
+    pullPolicy: Always # Conforme à vos standards
+
+  # Labels appliqués à tous les composants
+  labels:
+    appcode: 🔴 APxxxxx # 🔴 À MODIFIER
+    env: dev
+    ecosystem: 🔴 ecXXXiXXXXXX
+
+  # Ingress
+  ingress:
+    enabled: true
+    className: nginx
+    host: "🔴 camunda-dev.votre-domaine.com" # 🔴 À MODIFIER
+    tls:
+      enabled: true
+      secretName: camunda-dev-tls
+
+#######################################################
+# Zeebe - Moteur de workflow
+#######################################################
+zeebe:
+  clusterSize: 1 # 1 seul nœud en DEV
+  partitionCount: 2
+  replicationFactor: 1
+
+  image:
+    pullPolicy: Always
+
+  # Labels spécifiques
+  labels:
+    function: zeebe-broker
+    component: java
+
+  # Variables d'environnement
+  env:
+    - name: JAVA_OPTS
+      value: "-Xms512m -Xmx1g -XX:+UseG1GC"
+    - name: ZEEBE_BROKER_EXECUTION_METRICS_EXPORTER_ENABLED
+      value: "true"
+
+  # Ressources (adaptées à DEV)
+  resources:
+    requests:
+      cpu: 750m
+      memory: 1.5Gi
+    limits:
+      cpu: 750m # Match CPU request comme votre backend
+      memory: 1.5Gi
+
+  # Security Context (conforme à vos standards)
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+    runAsGroup: 1001
+    fsGroup: 1001
+
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: ["ALL"]
+    seccompProfile:
+      type: RuntimeDefault
+    runAsNonRoot: true
+    runAsUser: 1001
+    runAsGroup: 1001
+
+  # Probes (similaire à votre backend)
+  startupProbe:
+    periodSeconds: 10
+    failureThreshold: 60
+    timeoutSeconds: 30
+
+  readinessProbe:
+    periodSeconds: 10
+    timeoutSeconds: 30
+
+  livenessProbe:
+    periodSeconds: 10
+    timeoutSeconds: 30
+
+  # Persistence
+  pvcSize: 10Gi
+  pvcAccessModes: ["ReadWriteOnce"]
+  pvcStorageClassName: "" # 🔴 À définir selon votre cluster
+
+#######################################################
+# Zeebe Gateway - Point d'entrée API
+#######################################################
+zeebe-gateway:
+  replicas: 1
+
+  image:
+    pullPolicy: Always
+
+  labels:
+    function: zeebe-gateway
+    component: java
+
+  env:
+    - name: JAVA_OPTS
+      value: "-Xms256m -Xmx512m"
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Security Context
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+    runAsGroup: 1001
+
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: ["ALL"]
+    seccompProfile:
+      type: RuntimeDefault
+    runAsNonRoot: true
+    runAsUser: 1001
+
+  # Service
+  service:
+    type: ClusterIP
+    httpPort: 8080
+    grpcPort: 26500
+
+  # Ingress
+  ingress:
+    enabled: true
+    className: nginx
+    host: "🔴 zeebe-gateway-dev.votre-domaine.com" # 🔴 À MODIFIER
+    tls:
+      enabled: true
+      secretName: zeebe-gateway-tls
+
+#######################################################
+# Operate - Interface de monitoring
+#######################################################
+operate:
+  enabled: true
+
+  image:
+    pullPolicy: Always
+
+  labels:
+    function: operate-ui
+    component: java
+
+  env:
+    - name: JAVA_OPTS
+      value: "-Xms256m -Xmx512m"
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Security Context
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+    runAsGroup: 1001
+
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: ["ALL"]
+    seccompProfile:
+      type: RuntimeDefault
+    runAsNonRoot: true
+    runAsUser: 1001
+
+  # Probes
+  startupProbe:
+    periodSeconds: 10
+    failureThreshold: 60
+    timeoutSeconds: 30
+
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: http
+      scheme: HTTP
+    periodSeconds: 10
+    timeoutSeconds: 30
+
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: http
+      scheme: HTTP
+    periodSeconds: 10
+    timeoutSeconds: 30
+
+  ingress:
+    enabled: true
+    className: nginx
+    host: "🔴 operate-dev.votre-domaine.com" # 🔴 À MODIFIER
+    tls:
+      enabled: true
+      secretName: operate-tls
+
+#######################################################
+# Tasklist - Interface des tâches utilisateur
+#######################################################
+tasklist:
+  enabled: true
+
+  image:
+    pullPolicy: Always
+
+  labels:
+    function: tasklist-ui
+    component: java
+
+  env:
+    - name: JAVA_OPTS
+      value: "-Xms256m -Xmx512m"
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Security Context
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+    runAsGroup: 1001
+
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: ["ALL"]
+    seccompProfile:
+      type: RuntimeDefault
+    runAsNonRoot: true
+    runAsUser: 1001
+
+  # Probes
+  startupProbe:
+    periodSeconds: 10
+    failureThreshold: 60
+    timeoutSeconds: 30
+
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: http
+      scheme: HTTP
+    periodSeconds: 10
+    timeoutSeconds: 30
+
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: http
+      scheme: HTTP
+    periodSeconds: 10
+    timeoutSeconds: 30
+
+  ingress:
+    enabled: true
+    className: nginx
+    host: "🔴 tasklist-dev.votre-domaine.com" # 🔴 À MODIFIER
+    tls:
+      enabled: true
+      secretName: tasklist-tls
+
+#######################################################
+# Optimize - Analyse (désactivé en DEV par défaut)
+#######################################################
+optimize:
+  enabled: false # Activer si nécessaire
+
+#######################################################
+# Connectors - Intégrations (désactivé en DEV)
+#######################################################
+connectors:
+  enabled: false # Activer si nécessaire
+
+#######################################################
+# Identity - Authentification (simplifié en DEV)
+#######################################################
+identity:
+  enabled: false # Activer pour gérer l'authentification centralisée
+
+#######################################################
+# Elasticsearch - Base de données
+#######################################################
+elasticsearch:
+  enabled: true
+
+  image:
+    pullPolicy: Always
+
+  # Déploiement simplifié pour DEV
+  master:
+    replicaCount: 1
+
+  data:
+    replicaCount: 1
+
+  coordinating:
+    replicaCount: 1
+
+  resources:
+    requests:
+      cpu: 750m
+      memory: 1.5Gi
+    limits:
+      cpu: 750m
+      memory: 1.5Gi
+
+  # Security Context
+  securityContext:
+    enabled: true
+    runAsUser: 1001
+    runAsGroup: 1001
+    fsGroup: 1001
+
+  containerSecurityContext:
+    enabled: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: ["ALL"]
+    runAsNonRoot: true
+    runAsUser: 1001
+
+  # Persistence
+  volumeClaimTemplate:
+    resources:
+      requests:
+        storage: 15Gi
+    storageClassName: "" # 🔴 À définir selon votre cluster
+    accessModes: ["ReadWriteOnce"]
+
+#######################################################
+# PostgreSQL - Base de données (optionnel)
+#######################################################
+# Si vous voulez utiliser PostgreSQL au lieu d'Elasticsearch
+# pour certains composants (Identity, etc.)
+postgresql:
+  enabled: false # Activer si nécessaire
+
+  auth:
+    database: camunda
+    username: camunda_user
+    # Password sera injecté via Vault
+
+  primary:
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+    # Security Context
+    containerSecurityContext:
+      enabled: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: ["ALL"]
+      runAsNonRoot: true
+      runAsUser: 1001
+
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClass: "" # 🔴 À définir
+
+#######################################################
+# Init container HashiCorp Vault (si nécessaire)
+#######################################################
+# Configuration Vault similaire à votre backend
+# À décommenter et adapter si vous utilisez Vault pour les secrets
+
+# vault:
+#   enabled: true
+#   namespace: 🔴 VOTRE_NAMESPACE/VAULT  # 🔴 À MODIFIER
+#   cluster:
+#     name: 🔴 kuXXXiXXXXXX  # 🔴 À MODIFIER
+#   image:
+#     name: vault
+#     tag: 1.6.3
+#     pullPolicy: IfNotPresent
+#   log:
+#     level: info
+#   securityContext:
+#     allowPrivilegeEscalation: false
+#     capabilities:
+#       drop: ["ALL"]
+#     runAsUser: 1001
+#     runAsGroup: 1001
+#
+#   # Secrets à récupérer depuis Vault
+#   raw_secrets:
+#     - destination_file: camunda-secrets.yaml
+#       vault_template: |
+#         {{- with secret "secret/data/🔴apxxxxx/dev/camunda/applis" }}
+#         {{ .Data.data }}
+#         {{- end }}
+
+#######################################################
+# Notes de configuration
+#######################################################
+# 🔴 À MODIFIER avant déploiement:
+# 1. labels.appcode - Code application Camunda
+# 2. labels.appshortname - Nom court du projet
+# 3. labels.opscontact - Contact équipe ops
+# 4. labels.ecosystem - Code ecosystem si différent
+# 5. *.ingress.host - Domaines selon votre environnement
+# 6. StorageClass - Classes de stockage de votre cluster
+# 7. Vault namespace et paths - Si utilisation de Vault
+#
+# ⚠️ Cette configuration suit vos standards:
+# - SecurityContext strict (runAsNonRoot, drop ALL capabilities)
+# - Probes configurées (startup, readiness, liveness)
+# - Labels standardisés
+# - Resources requests = limits pour CPU
+# - Image pullPolicy: Always

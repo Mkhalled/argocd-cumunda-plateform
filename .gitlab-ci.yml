@@ -1,0 +1,157 @@
+# Pipeline GitLab CI/CD pour Camunda 8
+# Déploiement direct avec Helm (comme votre backend)
+
+variables:
+  HELM_VERSION: "3.13.0"
+  KUBECTL_VERSION: "1.28.0"
+
+stages:
+  - validate
+  - deploy-dev
+  - deploy-int
+  - deploy-qua
+
+#######################################################
+# Validation du chart Helm
+#######################################################
+validate:chart:
+  stage: validate
+  image: alpine/helm:${HELM_VERSION}
+  script:
+    - echo "🔍 Validation du chart Helm..."
+    - helm dependency update chart/
+    - helm lint chart/ -f chart/values-dev.yaml
+    - helm template camunda8-dev chart/ -f chart/values-dev.yaml
+  only:
+    - merge_requests
+    - main
+
+#######################################################
+# Déploiement DEV (automatique)
+#######################################################
+deploy:dev:
+  stage: deploy-dev
+  image: alpine/helm:${HELM_VERSION}
+  environment:
+    name: development
+    url: https://🔴operate-dev.votre-domaine.com
+  script:
+    - echo "🚀 Déploiement Camunda 8 en DEV..."
+
+    # Configuration depuis .env_vars
+    - export NAMESPACE="🔴nsXXXiXXXXXX" # 🔴 À MODIFIER depuis .env_vars
+    - export CLUSTER="https://🔴kuXXXiXXXXXX-xxxxx.svc-np.paas.votre-domaine.com:XXXXX"
+
+    # Update Helm dependencies
+    - helm dependency update chart/
+
+    # Déployer avec Helm
+    - |
+      helm upgrade --install camunda8-dev chart/ \
+        --namespace ${NAMESPACE} \
+        --create-namespace \
+        --values chart/values-dev.yaml \
+        --wait \
+        --timeout 15m
+
+    # Vérifier le déploiement
+    - kubectl get pods -n ${NAMESPACE}
+
+  only:
+    - main
+  when: on_success
+
+#######################################################
+# Déploiement INT (manuel)
+#######################################################
+deploy:int:
+  stage: deploy-int
+  image: alpine/helm:${HELM_VERSION}
+  environment:
+    name: integration
+    url: https://🔴operate-int.votre-domaine.com
+  script:
+    - echo "🚀 Déploiement Camunda 8 en INT..."
+
+    - export NAMESPACE="🔴nsXXXiXXXXXX" # 🔴 À MODIFIER depuis .env_vars
+    - export CLUSTER="https://🔴kuXXXiXXXXXX-xxxxx.svc-np.paas.votre-domaine.com:XXXXX"
+
+    - helm dependency update chart/
+
+    - |
+      helm upgrade --install camunda8-int chart/ \
+        --namespace ${NAMESPACE} \
+        --create-namespace \
+        --values chart/values-int.yaml \
+        --wait \
+        --timeout 15m
+
+    - kubectl get pods -n ${NAMESPACE}
+
+  only:
+    - main
+  when: manual
+
+#######################################################
+# Déploiement QUA (manuel)
+#######################################################
+deploy:qua:
+  stage: deploy-qua
+  image: alpine/helm:${HELM_VERSION}
+  environment:
+    name: qualification
+    url: https://🔴operate-qua.votre-domaine.com
+  script:
+    - echo "🚀 Déploiement Camunda 8 en QUAL..."
+
+    - export NAMESPACE="🔴nsXXXiXXXXXX" # 🔴 À MODIFIER depuis .env_vars
+    - export CLUSTER="https://🔴kuXXXiXXXXXX-xxxxx.svc-np.paas.votre-domaine.com:XXXXX"
+
+    - helm dependency update chart/
+
+    - |
+      helm upgrade --install camunda8-qua chart/ \
+        --namespace ${NAMESPACE} \
+        --create-namespace \
+        --values chart/values-qua.yaml \
+        --wait \
+        --timeout 15m
+
+    - kubectl get pods -n ${NAMESPACE}
+
+  only:
+    - main
+  when: manual
+
+#######################################################
+# Rollback (manuel)
+#######################################################
+rollback:dev:
+  stage: deploy-dev
+  image: alpine/helm:${HELM_VERSION}
+  script:
+    - export NAMESPACE="🔴nsXXXiXXXXXX"
+    - helm rollback camunda8-dev -n ${NAMESPACE}
+  when: manual
+  only:
+    - main
+
+rollback:int:
+  stage: deploy-int
+  image: alpine/helm:${HELM_VERSION}
+  script:
+    - export NAMESPACE="🔴nsXXXiXXXXXX"
+    - helm rollback camunda8-int -n ${NAMESPACE}
+  when: manual
+  only:
+    - main
+
+rollback:qua:
+  stage: deploy-qua
+  image: alpine/helm:${HELM_VERSION}
+  script:
+    - export NAMESPACE="🔴nsXXXiXXXXXX"
+    - helm rollback camunda8-qua -n ${NAMESPACE}
+  when: manual
+  only:
+    - main
