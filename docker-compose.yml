@@ -1,0 +1,63 @@
+version: "3.8"
+
+services:
+  # Container de développement avec tous les outils K8s
+  devcontainer:
+    build:
+      context: .devcontainer
+      dockerfile: Dockerfile
+
+    container_name: camunda-devcontainer
+    hostname: k8s-dev
+
+    # Privilèges nécessaires pour Docker-in-Docker et Minikube
+    privileged: true
+
+    # Volumes
+    volumes:
+      # Monter le projet
+      - .:/workspace:cached
+
+      # Docker socket pour Docker-in-Docker
+      - /var/run/docker.sock:/var/run/docker.sock
+
+      # Cache Helm
+      - helm-cache:/root/.cache/helm
+
+      # Cache Minikube
+      - minikube-data:/root/.minikube
+
+      # Kube config
+      - kube-config:/root/.kube
+
+    # Variables d'environnement
+    environment:
+      - KUBECONFIG=/root/.kube/config
+      - MINIKUBE_IN_STYLE=true
+
+    # Garder le container en vie
+    command: sleep infinity
+
+    # Réseau
+    networks:
+      - camunda-net
+
+    # Ports exposés
+    ports:
+      - "8080:8080" # ArgoCD UI
+      - "8081:8081" # Camunda Operate
+      - "8082:8082" # Camunda Tasklist
+      - "26500:26500" # Zeebe Gateway
+      - "9090:9090" # Prometheus (si besoin)
+
+    # Redémarrage automatique
+    restart: unless-stopped
+
+volumes:
+  helm-cache:
+  minikube-data:
+  kube-config:
+
+networks:
+  camunda-net:
+    driver: bridge

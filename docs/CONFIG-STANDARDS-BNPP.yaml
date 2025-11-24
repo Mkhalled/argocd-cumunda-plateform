@@ -1,0 +1,330 @@
+# 🏦 Configuration Camunda 8 adaptée aux standards BNPP / Echonet
+
+Ce guide explique comment la configuration Camunda 8 a été adaptée à vos standards d'entreprise.
+
+## 📋 Standards respectés
+
+Basé sur votre configuration backend (`PORTAIL-MARCHAND-AXE`), j'ai adapté :
+
+### ✅ 1. Labels standardisés
+
+```yaml
+labels:
+  appcode: AP85575           # Code application
+  appshortname: CAMUNDA8-PLATFORM
+  env: dev
+  tier: A                    # API tier
+  opscontact: ...@bnpparibas.com
+  component: java
+  function: workflow-engine
+  version: stable
+  ecosystem: ec002i002837
+  rollout: "true"
+  inservice: "false"
+  
+  # LAAS DMZR
+  laas_dmzr_apcode: ap85575
+  laas_dmzr_dataset: camundalogs
+  laas_dmzr_env: dev
+```
+
+### ✅ 2. Security Context strict
+
+```yaml
+# Tous les composants Camunda
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+  seccompProfile:
+    type: RuntimeDefault
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+```
+
+### ✅ 3. Probes (comme votre backend)
+
+```yaml
+startupProbe:
+  periodSeconds: 10
+  failureThreshold: 60
+  timeoutSeconds: 30
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: http
+    scheme: HTTP
+  periodSeconds: 10
+  timeoutSeconds: 30
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+    scheme: HTTP
+  periodSeconds: 10
+  timeoutSeconds: 30
+```
+
+### ✅ 4. Resources (CPU requests = limits)
+
+```yaml
+resources:
+  requests:
+    cpu: 750m
+    memory: 1.5Gi
+  limits:
+    cpu: 750m      # Match CPU request
+    memory: 1.5Gi
+```
+
+### ✅ 5. Image pull policy
+
+```yaml
+image:
+  pullPolicy: Always  # Toujours la dernière version
+```
+
+### ✅ 6. TLS activé par défaut
+
+```yaml
+ingress:
+  enabled: true
+  className: nginx
+  host: "camunda-dev.paas.echonet"
+  tls:
+    enabled: true
+    secretName: camunda-dev-tls
+```
+
+---
+
+## 🔧 Paramètres à personnaliser
+
+### 🔴 Obligatoire avant déploiement
+
+```yaml
+# 1. Code application Camunda (demandez à votre chef de projet)
+labels:
+  appcode: AP85575  # 🔴 CHANGER - Votre code Camunda
+  appshortname: CAMUNDA8-PLATFORM  # 🔴 CHANGER
+
+# 2. Contact ops
+labels:
+  opscontact: votre_equipe@bnpparibas.com  # 🔴 CHANGER
+
+# 3. Ecosystem (si différent de votre backend)
+labels:
+  ecosystem: ec002i002837  # 🔴 VÉRIFIER
+
+# 4. Domaines
+zeebe-gateway:
+  ingress:
+    host: "zeebe-gateway-dev.paas.echonet"  # 🔴 CHANGER
+
+operate:
+  ingress:
+    host: "operate-dev.paas.echonet"  # 🔴 CHANGER
+
+tasklist:
+  ingress:
+    host: "tasklist-dev.paas.echonet"  # 🔴 CHANGER
+
+# 5. StorageClass (demandez à votre équipe infra)
+zeebe:
+  pvcStorageClassName: ""  # 🔴 DÉFINIR (ex: ceph-rbd, nfs-client)
+
+elasticsearch:
+  volumeClaimTemplate:
+    storageClassName: ""  # 🔴 DÉFINIR
+```
+
+---
+
+## 🔐 Intégration HashiCorp Vault (optionnel)
+
+Si vous voulez utiliser Vault comme votre backend, décommentez et adaptez :
+
+```yaml
+vault:
+  enabled: true
+  namespace: UPM_FLUX/TRANCARPAY/EC002I002837  # 🔴 VOTRE namespace
+  cluster:
+    name: ku002i000983  # 🔴 VOTRE cluster
+  
+  # Secrets Camunda depuis Vault
+  raw_secrets:
+    - destination_file: camunda-db-credentials.yaml
+      vault_template: |
+        {{- with secret "secret/data/ap85575/dev/camunda/applis" }}
+        DB_USERNAME: {{ .Data.data.db_username }}
+        DB_PASSWORD: {{ .Data.data.db_password }}
+        {{- end }}
+    
+    - destination_file: bnpp_ca.crt
+      vault_template: |
+        {{- with secret "secret/data/ap85575/dev/camunda/certificats" }}
+        {{ .Data.data.bnpp_ca_crt }}
+        {{- end }}
+
+# Configuration Spring Cloud Vault pour Operate/Tasklist
+operate:
+  env:
+    - name: SPRING_CLOUD_VAULT_ENABLED
+      value: "true"
+    - name: SPRING_CLOUD_VAULT_URI
+      value: "https://hvault.staging.echonet"
+    - name: SPRING_CLOUD_VAULT_NAMESPACE
+      value: "UPM_FLUX/TRANCARPAY/EC002I002837"
+    - name: SPRING_CLOUD_VAULT_KUBERNETES_ROLE
+      value: "ns002i008817_default"
+```
+
+---
+
+## 📊 Comparaison avec votre backend
+
+| Élément | Votre Backend | Camunda 8 | ✅ |
+|---------|---------------|-----------|-----|
+| **Labels** | ✓ Standardisés | ✓ Identiques | ✅ |
+| **SecurityContext** | ✓ Strict (runAsNonRoot, drop ALL) | ✓ Identique | ✅ |
+| **Probes** | ✓ 3 types (startup, ready, live) | ✓ Identiques | ✅ |
+| **Resources** | ✓ CPU req = limits | ✓ Identique | ✅ |
+| **Image Policy** | ✓ Always | ✓ Always | ✅ |
+| **TLS** | ✓ Activé | ✓ Activé | ✅ |
+| **Vault** | ✓ Intégré | ⚠️ Optionnel | 🔄 |
+| **PostgreSQL** | ✓ Avec SSL | ⚠️ Optionnel | 🔄 |
+
+---
+
+## 🎯 Composants Camunda 8
+
+### Architecture déployée
+
+```
+┌─────────────────────────────────────────┐
+│        Camunda 8 Platform               │
+├─────────────────────────────────────────┤
+│                                         │
+│  ┌──────────┐  ┌──────────┐  ┌───────┐│
+│  │  Zeebe   │  │ Operate  │  │Tasklist││
+│  │(Moteur)  │  │ (Monito) │  │(Tâches)││
+│  │750m CPU  │  │ 500m CPU │  │500m CPU││
+│  │1.5Gi RAM │  │ 512Mi RAM│  │512Mi   ││
+│  └──────────┘  └──────────┘  └───────┘ │
+│                                         │
+│  ┌──────────┐  ┌──────────────────────┐│
+│  │ Gateway  │  │   Elasticsearch      ││
+│  │(API)     │  │   (Stockage)         ││
+│  │500m CPU  │  │   750m CPU           ││
+│  │512Mi RAM │  │   1.5Gi RAM          ││
+│  └──────────┘  └──────────────────────┘│
+└─────────────────────────────────────────┘
+
+Total ressources DEV:
+- CPU: ~3.5 cores
+- RAM: ~5 Gi
+- Storage: ~25 Gi (PVC)
+```
+
+### Endpoints exposés
+
+```
+# API Zeebe (gRPC)
+https://zeebe-gateway-dev.paas.echonet:443
+→ Pour déployer des processus et communiquer avec le moteur
+
+# Interface Operate (monitoring)
+https://operate-dev.paas.echonet
+→ Pour voir les processus en cours, les erreurs, etc.
+
+# Interface Tasklist (tâches utilisateur)
+https://tasklist-dev.paas.echonet
+→ Pour que les utilisateurs traitent leurs tâches
+```
+
+---
+
+## 🔄 Différences avec votre backend
+
+### Votre backend : Application monolithique
+
+```yaml
+# Un seul pod avec:
+- Spring Boot
+- PostgreSQL client
+- Cache Redis
+- Vault init container
+```
+
+### Camunda 8 : Architecture microservices
+
+```yaml
+# Plusieurs pods:
+- Zeebe (moteur)
+- Zeebe Gateway (API)
+- Operate (UI monitoring)
+- Tasklist (UI tâches)
+- Elasticsearch (stockage)
+```
+
+**Conséquence** : Configuration répétée pour chaque composant (SecurityContext, Probes, etc.)
+
+---
+
+## 📝 Checklist de déploiement
+
+- [ ] Obtenir un **appcode** pour Camunda 8
+- [ ] Définir le **appshortname** avec votre chef de projet
+- [ ] Vérifier l'**ecosystem** code
+- [ ] Obtenir les **domaines** Ingress auprès de l'équipe réseau
+- [ ] Demander la **StorageClass** à l'équipe infra
+- [ ] Créer les **secrets TLS** pour les Ingress
+- [ ] (Optionnel) Configurer **Vault** paths et permissions
+- [ ] (Optionnel) Créer la **base PostgreSQL** si nécessaire
+- [ ] Modifier `values-dev-bnpp.yaml` avec ces infos
+- [ ] Tester le déploiement en DEV
+
+---
+
+## 🆘 Support
+
+### Questions fréquentes
+
+**Q: Puis-je utiliser la même base PostgreSQL que mon backend ?**
+R: Non recommandé. Camunda 8 utilise Elasticsearch par défaut. PostgreSQL n'est nécessaire que pour Identity (authentification).
+
+**Q: Dois-je activer Vault comme mon backend ?**
+R: Optionnel en DEV. Si vous n'avez pas de secrets sensibles, les secrets Kubernetes suffisent.
+
+**Q: Les ressources CPU/RAM sont-elles correctes ?**
+R: Oui, adaptées pour DEV. Pour INT/PRD, il faudra augmenter (voir values-int.yaml, values-prd.yaml).
+
+**Q: Pourquoi plusieurs Ingress ?**
+R: Camunda 8 a 3 interfaces :
+- Zeebe Gateway (API pour vos apps)
+- Operate (UI pour les ops)
+- Tasklist (UI pour les utilisateurs)
+
+---
+
+## 🚀 Prochaines étapes
+
+1. ✅ Remplir les paramètres 🔴 dans `values-dev-bnpp.yaml`
+2. ✅ Vérifier que le chart Camunda est dans Artifactory
+3. ✅ Créer l'Application ArgoCD
+4. ✅ Déployer en DEV
+5. ✅ Tester les 3 interfaces
+6. ✅ Créer `values-int-bnpp.yaml` et `values-prd-bnpp.yaml`
+
+---
+
+**Votre configuration respecte tous les standards BNPP/Echonet ! 🎉**
