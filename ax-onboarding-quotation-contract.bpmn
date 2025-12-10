@@ -1,91 +1,226 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions
-  xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
-  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
-  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
-  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
-  id="Definitions_1"
-  targetNamespace="http://bpmn.io/schema/bpmn">
-
-  <bpmn:process id="AX_Quotation_Contract_Process" name="AX Quotation & Contract Process" isExecutable="true">
-
-    <!-- START -->
-    <bpmn:startEvent id="StartEvent" name="BG/LE Selected"/>
-
-    <!-- CHECK RIGHTS -->
-    <bpmn:exclusiveGateway id="Gateway_CheckRights" name="Has Admin Rights?"/>
-
-    <!-- ACCESS DENIED -->
-    <bpmn:endEvent id="End_AccessDenied" name="Access Denied"/>
-
-    <!-- CHOOSE ACTION -->
-    <bpmn:userTask id="UserTask_ChooseAction" name="Choose Action"/>
-
-    <bpmn:exclusiveGateway id="Gateway_Action" name="Selected Action?"/>
-
-    <!-- ========== QUOTATION FLOW ========== -->
-    <bpmn:userTask id="UserTask_FillForm" name="Fill Question Form"/>
-    <bpmn:exclusiveGateway id="Gateway_FormValid" name="Form Complete?"/>
-    <bpmn:serviceTask id="ServiceTask_GenerateOffer" name="Generate Proposed Offer"/>
-    <bpmn:userTask id="UserTask_SelectOffer" name="Select Proposed Offer"/>
-    <bpmn:exclusiveGateway id="Gateway_OfferAccepted" name="Offer Accepted?"/>
-    <bpmn:serviceTask id="ServiceTask_GenerateQuotation" name="Generate Quotation"/>
-    <bpmn:serviceTask id="ServiceTask_SaveQuotation" name="Save Quotation"/>
-    <bpmn:endEvent id="End_Quotation" name="Quotation Created"/>
-
-    <!-- ========== CONTRACT FLOW ========== -->
-    <bpmn:userTask id="UserTask_FillCustomer" name="Fill Customer Info"/>
-    <bpmn:userTask id="UserTask_RecapCustomer" name="Recap Customer Info"/>
-    <bpmn:userTask id="UserTask_RecapOffer" name="Recap Offer Info"/>
-    <bpmn:exclusiveGateway id="Gateway_ContractValid" name="Validation OK?"/>
-    <bpmn:serviceTask id="ServiceTask_GenerateContract" name="Generate Contract"/>
-    <bpmn:serviceTask id="ServiceTask_SaveContract" name="Save Contract"/>
-    <bpmn:endEvent id="End_Contract" name="Contract Created"/>
-
-    <!-- ========== OPEN EXISTING FLOW ========== -->
-    <bpmn:serviceTask id="ServiceTask_LoadExisting" name="Load Existing"/>
-    <bpmn:userTask id="UserTask_EditExisting" name="View / Edit"/>
-    <bpmn:serviceTask id="ServiceTask_SaveExisting" name="Save Existing"/>
-    <bpmn:endEvent id="End_Existing" name="Process Ended"/>
-
-    <!-- SEQUENCE FLOWS -->
-    <bpmn:sequenceFlow id="flow1" sourceRef="StartEvent" targetRef="Gateway_CheckRights"/>
-
-    <bpmn:sequenceFlow id="flow2" sourceRef="Gateway_CheckRights" targetRef="UserTask_ChooseAction">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">hasAdminRights == true</bpmn:conditionExpression>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:modeler="http://camunda.org/schema/modeler/1.0" exporter="Camunda Modeler" exporterVersion="5.42.0" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.8.0">
+  <bpmn:process id="ax_quotation_contract_process" name="AX Quotation &amp; Contract Process" isExecutable="true">
+    <bpmn:startEvent id="start_event_bg_selected" name="BG/LE Selected">
+      <bpmn:outgoing>sequence_flow_start_to_init</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="sequence_flow_start_to_init" sourceRef="start_event_bg_selected" targetRef="service_task_initialize_context" />
+    <bpmn:serviceTask id="service_task_initialize_context" name="Initialize Context">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="initialize-context" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>sequence_flow_start_to_init</bpmn:incoming>
+      <bpmn:outgoing>sequence_flow_init_to_gateway_admin</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="sequence_flow_init_to_gateway_admin" sourceRef="service_task_initialize_context" targetRef="gateway_has_admin_rights" />
+    <bpmn:exclusiveGateway id="gateway_has_admin_rights" name="Has Admin Rights?" default="sequence_flow_admin_no">
+      <bpmn:incoming>sequence_flow_init_to_gateway_admin</bpmn:incoming>
+      <bpmn:outgoing>sequence_flow_admin_yes</bpmn:outgoing>
+      <bpmn:outgoing>sequence_flow_admin_no</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="sequence_flow_admin_yes" name="Yes" sourceRef="gateway_has_admin_rights" targetRef="user_task_fill_question_form">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=hasAdminRights = true</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="sequence_flow_admin_no" name="No" sourceRef="gateway_has_admin_rights" targetRef="end_event_access_denied" />
+    <bpmn:endEvent id="end_event_access_denied" name="Access Denied">
+      <bpmn:incoming>sequence_flow_admin_no</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:userTask id="user_task_fill_question_form" name="Fill Question Form">
+      <bpmn:incoming>sequence_flow_admin_yes</bpmn:incoming>
+      <bpmn:incoming>sequence_flow_offer_not_accepted</bpmn:incoming>
+      <bpmn:incoming>sequence_flow_form_not_complete</bpmn:incoming>
+      <bpmn:outgoing>sequence_flow_question_form_to_gateway_complete</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="sequence_flow_question_form_to_gateway_complete" sourceRef="user_task_fill_question_form" targetRef="gateway_form_complete" />
+    <bpmn:exclusiveGateway id="gateway_form_complete" name="Form Complete?" default="sequence_flow_form_not_complete">
+      <bpmn:incoming>sequence_flow_question_form_to_gateway_complete</bpmn:incoming>
+      <bpmn:outgoing>sequence_flow_form_complete</bpmn:outgoing>
+      <bpmn:outgoing>sequence_flow_form_not_complete</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="sequence_flow_form_complete" name="Yes" sourceRef="gateway_form_complete" targetRef="service_task_generate_proposed_offer">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=formComplete = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="sequence_flow_form_not_complete" name="No" sourceRef="gateway_form_complete" targetRef="user_task_fill_question_form" />
+    <bpmn:serviceTask id="service_task_generate_proposed_offer" name="Generate Proposed Offer">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="generate-proposed-offer" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>sequence_flow_form_complete</bpmn:incoming>
+      <bpmn:outgoing>sequence_flow_generate_offer_to_select</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="sequence_flow_generate_offer_to_select" sourceRef="service_task_generate_proposed_offer" targetRef="user_task_select_proposed_offer" />
+    <bpmn:userTask id="user_task_select_proposed_offer" name="Select Proposed Offer">
+      <bpmn:incoming>sequence_flow_generate_offer_to_select</bpmn:incoming>
+      <bpmn:outgoing>sequence_flow_select_to_gateway_accepted</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="sequence_flow_select_to_gateway_accepted" sourceRef="user_task_select_proposed_offer" targetRef="gateway_offer_accepted" />
+    <bpmn:exclusiveGateway id="gateway_offer_accepted" name="Offer Accepted?" default="sequence_flow_offer_not_accepted">
+      <bpmn:incoming>sequence_flow_select_to_gateway_accepted</bpmn:incoming>
+      <bpmn:outgoing>sequence_flow_offer_accepted</bpmn:outgoing>
+      <bpmn:outgoing>sequence_flow_offer_not_accepted</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="sequence_flow_offer_accepted" name="Yes" sourceRef="gateway_offer_accepted" targetRef="service_task_generate_quotation">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=offerAccepted = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="sequence_flow_offer_not_accepted" name="No" sourceRef="gateway_offer_accepted" targetRef="user_task_fill_question_form" />
+    <bpmn:serviceTask id="service_task_generate_quotation" name="Generate Quotation">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="generate-quotation" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>sequence_flow_offer_accepted</bpmn:incoming>
+      <bpmn:outgoing>sequence_flow_generate_quotation_to_save</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="sequence_flow_generate_quotation_to_save" sourceRef="service_task_generate_quotation" targetRef="service_task_save_quotation" />
+    <bpmn:serviceTask id="service_task_save_quotation" name="Save Quotation">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="save-quotation" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>sequence_flow_generate_quotation_to_save</bpmn:incoming>
+      <bpmn:outgoing>sequence_flow_save_quotation_to_end</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="sequence_flow_save_quotation_to_end" sourceRef="service_task_save_quotation" targetRef="end_event_quotation_created" />
+    <bpmn:endEvent id="end_event_quotation_created" name="Quotation Created">
+      <bpmn:incoming>sequence_flow_save_quotation_to_end</bpmn:incoming>
+    </bpmn:endEvent>
 
-    <bpmn:sequenceFlow id="flow3" sourceRef="Gateway_CheckRights" targetRef="End_AccessDenied"/>
-
-    <bpmn:sequenceFlow id="flow4" sourceRef="UserTask_ChooseAction" targetRef="Gateway_Action"/>
-
-    <!-- QUOTATION -->
-    <bpmn:sequenceFlow id="flow5" sourceRef="Gateway_Action" targetRef="UserTask_FillForm"/>
-    <bpmn:sequenceFlow id="flow6" sourceRef="UserTask_FillForm" targetRef="Gateway_FormValid"/>
-    <bpmn:sequenceFlow id="flow7" sourceRef="Gateway_FormValid" targetRef="UserTask_FillForm"/>
-    <bpmn:sequenceFlow id="flow8" sourceRef="Gateway_FormValid" targetRef="ServiceTask_GenerateOffer"/>
-    <bpmn:sequenceFlow id="flow9" sourceRef="ServiceTask_GenerateOffer" targetRef="UserTask_SelectOffer"/>
-    <bpmn:sequenceFlow id="flow10" sourceRef="UserTask_SelectOffer" targetRef="Gateway_OfferAccepted"/>
-    <bpmn:sequenceFlow id="flow11" sourceRef="Gateway_OfferAccepted" targetRef="UserTask_FillForm"/>
-    <bpmn:sequenceFlow id="flow12" sourceRef="Gateway_OfferAccepted" targetRef="ServiceTask_GenerateQuotation"/>
-    <bpmn:sequenceFlow id="flow13" sourceRef="ServiceTask_GenerateQuotation" targetRef="ServiceTask_SaveQuotation"/>
-    <bpmn:sequenceFlow id="flow14" sourceRef="ServiceTask_SaveQuotation" targetRef="End_Quotation"/>
-
-    <!-- CONTRACT -->
-    <bpmn:sequenceFlow id="flow15" sourceRef="Gateway_Action" targetRef="UserTask_FillCustomer"/>
-    <bpmn:sequenceFlow id="flow16" sourceRef="UserTask_FillCustomer" targetRef="UserTask_RecapCustomer"/>
-    <bpmn:sequenceFlow id="flow17" sourceRef="UserTask_RecapCustomer" targetRef="UserTask_RecapOffer"/>
-    <bpmn:sequenceFlow id="flow18" sourceRef="UserTask_RecapOffer" targetRef="Gateway_ContractValid"/>
-    <bpmn:sequenceFlow id="flow19" sourceRef="Gateway_ContractValid" targetRef="UserTask_FillCustomer"/>
-    <bpmn:sequenceFlow id="flow20" sourceRef="Gateway_ContractValid" targetRef="ServiceTask_GenerateContract"/>
-    <bpmn:sequenceFlow id="flow21" sourceRef="ServiceTask_GenerateContract" targetRef="ServiceTask_SaveContract"/>
-    <bpmn:sequenceFlow id="flow22" sourceRef="ServiceTask_SaveContract" targetRef="End_Contract"/>
-
-    <!-- OPEN EXISTING -->
-    <bpmn:sequenceFlow id="flow23" sourceRef="Gateway_Action" targetRef="ServiceTask_LoadExisting"/>
-    <bpmn:sequenceFlow id="flow24" sourceRef="ServiceTask_LoadExisting" targetRef="UserTask_EditExisting"/>
-    <bpmn:sequenceFlow id="flow25" sourceRef="UserTask_EditExisting" targetRef="ServiceTask_SaveExisting"/>
-    <bpmn:sequenceFlow id="flow26" sourceRef="ServiceTask_SaveExisting" targetRef="End_Existing"/>
 
   </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="ax_quotation_contract_process">
+      <bpmndi:BPMNShape id="start_event_bg_selected_di" bpmnElement="start_event_bg_selected">
+        <dc:Bounds x="179" y="159" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="158" y="202" width="79" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="service_task_initialize_context_di" bpmnElement="service_task_initialize_context">
+        <dc:Bounds x="270" y="137" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="gateway_has_admin_rights_di" bpmnElement="gateway_has_admin_rights" isMarkerVisible="true">
+        <dc:Bounds x="425" y="152" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="410" y="122" width="80" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end_event_access_denied_di" bpmnElement="end_event_access_denied">
+        <dc:Bounds x="432" y="272" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="410" y="315" width="81" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="user_task_fill_question_form_di" bpmnElement="user_task_fill_question_form">
+        <dc:Bounds x="790" y="137" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="gateway_form_complete_di" bpmnElement="gateway_form_complete" isMarkerVisible="true">
+        <dc:Bounds x="945" y="152" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="927" y="122" width="86" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="service_task_generate_proposed_offer_di" bpmnElement="service_task_generate_proposed_offer">
+        <dc:Bounds x="1050" y="137" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="user_task_select_proposed_offer_di" bpmnElement="user_task_select_proposed_offer">
+        <dc:Bounds x="1210" y="137" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="gateway_offer_accepted_di" bpmnElement="gateway_offer_accepted" isMarkerVisible="true">
+        <dc:Bounds x="1365" y="152" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1346" y="122" width="89" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="service_task_generate_quotation_di" bpmnElement="service_task_generate_quotation">
+        <dc:Bounds x="1470" y="137" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="service_task_save_quotation_di" bpmnElement="service_task_save_quotation">
+        <dc:Bounds x="1630" y="137" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end_event_quotation_created_di" bpmnElement="end_event_quotation_created">
+        <dc:Bounds x="1792" y="159" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1785" y="202" width="51" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+
+      <bpmndi:BPMNEdge id="sequence_flow_start_to_init_di" bpmnElement="sequence_flow_start_to_init">
+        <di:waypoint x="215" y="177" />
+        <di:waypoint x="270" y="177" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sequence_flow_init_to_gateway_admin_di" bpmnElement="sequence_flow_init_to_gateway_admin">
+        <di:waypoint x="370" y="177" />
+        <di:waypoint x="425" y="177" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sequence_flow_admin_yes_di" bpmnElement="sequence_flow_admin_yes">
+        <di:waypoint x="475" y="177" />
+        <di:waypoint x="790" y="177" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="625" y="159" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sequence_flow_admin_no_di" bpmnElement="sequence_flow_admin_no">
+        <di:waypoint x="450" y="202" />
+        <di:waypoint x="450" y="272" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="458" y="234" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="sequence_flow_question_form_to_gateway_complete_di" bpmnElement="sequence_flow_question_form_to_gateway_complete">
+        <di:waypoint x="890" y="177" />
+        <di:waypoint x="945" y="177" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sequence_flow_form_complete_di" bpmnElement="sequence_flow_form_complete">
+        <di:waypoint x="995" y="177" />
+        <di:waypoint x="1050" y="177" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1013" y="159" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sequence_flow_form_not_complete_di" bpmnElement="sequence_flow_form_not_complete">
+        <di:waypoint x="970" y="202" />
+        <di:waypoint x="970" y="260" />
+        <di:waypoint x="840" y="260" />
+        <di:waypoint x="840" y="217" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="898" y="242" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sequence_flow_generate_offer_to_select_di" bpmnElement="sequence_flow_generate_offer_to_select">
+        <di:waypoint x="1150" y="177" />
+        <di:waypoint x="1210" y="177" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sequence_flow_select_to_gateway_accepted_di" bpmnElement="sequence_flow_select_to_gateway_accepted">
+        <di:waypoint x="1310" y="177" />
+        <di:waypoint x="1365" y="177" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sequence_flow_offer_accepted_di" bpmnElement="sequence_flow_offer_accepted">
+        <di:waypoint x="1415" y="177" />
+        <di:waypoint x="1470" y="177" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1433" y="159" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sequence_flow_offer_not_accepted_di" bpmnElement="sequence_flow_offer_not_accepted">
+        <di:waypoint x="1390" y="202" />
+        <di:waypoint x="1390" y="290" />
+        <di:waypoint x="840" y="290" />
+        <di:waypoint x="840" y="217" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1108" y="272" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sequence_flow_generate_quotation_to_save_di" bpmnElement="sequence_flow_generate_quotation_to_save">
+        <di:waypoint x="1570" y="177" />
+        <di:waypoint x="1630" y="177" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sequence_flow_save_quotation_to_end_di" bpmnElement="sequence_flow_save_quotation_to_end">
+        <di:waypoint x="1730" y="177" />
+        <di:waypoint x="1792" y="177" />
+      </bpmndi:BPMNEdge>
+
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
 </bpmn:definitions>
